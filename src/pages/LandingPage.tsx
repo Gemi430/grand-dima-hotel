@@ -143,6 +143,25 @@ export const LandingPage: React.FC = () => {
   const [bookingOpen, setBookingOpen] = useState(false);
   const [menuTab, setMenuTab] = useState(0);
 
+  // Booking form state
+  const [bookingDates, setBookingDates] = useState({
+    checkIn: new Date().toISOString().split('T')[0],
+    checkOut: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+    guests: 1,
+    name: '',
+    phone: '',
+    specialRequests: '',
+  });
+
+  // Food inquiry state
+  const [foodDialogOpen, setFoodDialogOpen] = useState(false);
+  const [selectedFoodItem, setSelectedFoodItem] = useState<any>(null);
+  const [foodOrder, setFoodOrder] = useState({
+    name: '', phone: '',
+    date: new Date().toISOString().split('T')[0],
+    time: '12:00', guests: 2, notes: '',
+  });
+
   // ── Scroll-reveal: observe every [data-reveal] element ──────────────────────
   useEffect(() => {
     const style = document.createElement('style');
@@ -206,8 +225,10 @@ export const LandingPage: React.FC = () => {
   };
 
   // Fixed 1-night default for booking dialog preview
-  const calcNights = () => 1;
-  const calcTotal = (rate: number) => (rate * 1.1 + 200).toLocaleString();
+  const calcNights = () => Math.max(1, Math.ceil(
+    (new Date(bookingDates.checkOut).getTime() - new Date(bookingDates.checkIn).getTime()) / 86400000
+  ));
+  const calcTotal = (rate: number) => (rate * calcNights() * 1.1 + 200).toLocaleString();
 
   const NAV = ['Home', 'Rooms', 'Menu', 'Experience', 'Gallery', 'Contact'];
   const MENU_TABS = ['Breakfast', 'Lunch', 'Dinner', 'Drinks'];
@@ -662,7 +683,19 @@ export const LandingPage: React.FC = () => {
                   <Box sx={{ p: 2.5, bgcolor: '#181818' }}>
                     <Typography sx={{ color: 'white', fontFamily: 'serif', fontWeight: 600, fontSize: '1rem', mb: 0.25 }}>{item.name}</Typography>
                     <Typography sx={{ color: gold, fontFamily: 'serif', fontSize: '0.82rem', mb: 1, fontStyle: 'italic' }}>{item.nameAm}</Typography>
-                    <Typography sx={{ color: 'rgba(255,255,255,0.42)', fontSize: '0.8rem', fontFamily: 'sans-serif', lineHeight: 1.7 }}>{item.desc}</Typography>
+                    <Typography sx={{ color: 'rgba(255,255,255,0.42)', fontSize: '0.8rem', fontFamily: 'sans-serif', lineHeight: 1.7, mb: 2 }}>{item.desc}</Typography>
+                    <Button
+                      fullWidth
+                      onClick={() => { setSelectedFoodItem(item); setFoodDialogOpen(true); }}
+                      sx={{
+                        color: gold, border: `1px solid rgba(201,169,110,0.4)`, borderRadius: 0,
+                        py: 1, fontSize: '0.68rem', letterSpacing: 2.5, fontFamily: 'sans-serif', fontWeight: 600,
+                        '&:hover': { bgcolor: gold, color: dark, borderColor: gold },
+                        transition: 'all 0.3s',
+                      }}
+                    >
+                      RESERVE A TABLE
+                    </Button>
                   </Box>
                 </Box>
               </Grid>
@@ -671,7 +704,7 @@ export const LandingPage: React.FC = () => {
 
           <Box textAlign="center" mt={6}>
             <Button onClick={() => scrollTo('contact')} sx={{ color: gold, border: `1px solid ${gold}`, borderRadius: 0, px: 5, py: 1.6, fontSize: '0.72rem', letterSpacing: 3, fontFamily: 'sans-serif', fontWeight: 600, '&:hover': { bgcolor: gold, color: dark }, transition: 'all 0.3s' }}>
-              RESERVE A TABLE
+              CALL TO RESERVE: +251 911 000 000
             </Button>
           </Box>
         </Container>
@@ -977,55 +1010,247 @@ export const LandingPage: React.FC = () => {
       </Box>
 
       {/* ══════════════════════════════════════════════════════════════
-          BOOKING DIALOG
+          BOOKING DIALOG — full form with dates, guests, contact
       ══════════════════════════════════════════════════════════════ */}
       <Dialog open={bookingOpen} onClose={() => setBookingOpen(false)} maxWidth="sm" fullWidth
-        PaperProps={{ sx: { bgcolor: '#111', color: 'white', borderRadius: 0, border: '1px solid rgba(255,255,255,0.1)', m: { xs: 2, sm: 4 } } }}>
+        PaperProps={{ sx: { bgcolor: '#111', color: 'white', borderRadius: 0, border: '1px solid rgba(255,255,255,0.1)', m: { xs: 1, sm: 3 } } }}>
         {selectedRoom && (
           <>
             <DialogTitle sx={{ p: 3, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
               <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                 <Box>
-                  <Typography sx={{ color: gold, fontSize: '0.6rem', letterSpacing: 3, fontFamily: 'sans-serif', mb: 0.5 }}>BOOKING SUMMARY</Typography>
+                  <Typography sx={{ color: gold, fontSize: '0.6rem', letterSpacing: 3, fontFamily: 'sans-serif', mb: 0.5 }}>BOOK YOUR ROOM</Typography>
                   <Typography sx={{ color: 'white', fontFamily: 'serif', fontSize: '1.3rem', fontWeight: 600 }}>{selectedRoom.roomType.name}</Typography>
+                  <Typography sx={{ color: 'rgba(255,255,255,0.4)', fontFamily: 'sans-serif', fontSize: '0.78rem', mt: 0.25 }}>
+                    {selectedRoom.roomType.bedConfiguration} · {selectedRoom.roomType.maxOccupancy} guests max · Floor {selectedRoom.floor}
+                  </Typography>
                 </Box>
                 <IconButton onClick={() => setBookingOpen(false)} sx={{ color: 'rgba(255,255,255,0.35)', '&:hover': { color: 'white' } }}><CloseIcon /></IconButton>
               </Box>
             </DialogTitle>
+
             <DialogContent sx={{ p: 3 }}>
-              <Box sx={{ height: 180, backgroundImage: `url(${getRoomImage(selectedRoom.roomType.name)})`, backgroundSize: 'cover', backgroundPosition: 'center', mb: 3 }} />
-              <Box sx={{ p: 2, bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', mb: 2.5 }}>
-                <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontFamily: 'sans-serif', fontSize: '0.82rem' }}>
-                  {selectedRoom.roomType.bedConfiguration} · {selectedRoom.roomType.maxOccupancy} guests · {selectedRoom.roomType.size} sq ft
-                </Typography>
-                <Typography sx={{ color: 'rgba(255,255,255,0.35)', fontFamily: 'sans-serif', fontSize: '0.78rem', mt: 0.5, fontStyle: 'italic' }}>
-                  {selectedRoom.roomType.description}
-                </Typography>
+              {/* Room image */}
+              <Box sx={{ height: 160, backgroundImage: `url(${getRoomImage(selectedRoom.roomType.name)})`, backgroundSize: 'cover', backgroundPosition: 'center', mb: 3, position: 'relative' }}>
+                <Box sx={{ position: 'absolute', top: 12, right: 12, bgcolor: gold, px: 1.5, py: 0.5 }}>
+                  <Typography sx={{ color: dark, fontWeight: 700, fontSize: '0.85rem', fontFamily: 'sans-serif' }}>ETB {selectedRoom.pricing.baseRate.toLocaleString()}/night</Typography>
+                </Box>
               </Box>
-              <Divider sx={{ borderColor: 'rgba(255,255,255,0.07)', mb: 2.5 }} />
-              <Box display="flex" flexDirection="column" gap={1.5}>
-                {[
-                  { label: '1 night × ETB ' + selectedRoom.pricing.baseRate.toLocaleString(), val: `ETB ${selectedRoom.pricing.baseRate.toLocaleString()}` },
-                  { label: 'Taxes & fees (10%)', val: `ETB ${(selectedRoom.pricing.baseRate * 0.1).toLocaleString()}` },
-                  { label: 'Service fee', val: 'ETB 200' },
-                ].map((row) => (
-                  <Box key={row.label} display="flex" justifyContent="space-between">
-                    <Typography sx={{ color: 'rgba(255,255,255,0.45)', fontFamily: 'sans-serif', fontSize: '0.85rem' }}>{row.label}</Typography>
-                    <Typography sx={{ color: 'rgba(255,255,255,0.75)', fontFamily: 'sans-serif', fontSize: '0.85rem' }}>{row.val}</Typography>
+
+              {/* ── Step 1: Dates & Guests ── */}
+              <Typography sx={{ color: gold, fontSize: '0.6rem', letterSpacing: 3, fontFamily: 'sans-serif', mb: 2 }}>STEP 1 — DATES & GUESTS</Typography>
+              <Grid container spacing={2} mb={3}>
+                <Grid item xs={6}>
+                  <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.62rem', letterSpacing: 2, fontFamily: 'sans-serif', mb: 0.75 }}>CHECK-IN</Typography>
+                  <TextField type="date" fullWidth variant="standard" value={bookingDates.checkIn}
+                    onChange={(e) => setBookingDates(p => ({ ...p, checkIn: e.target.value }))}
+                    inputProps={{ min: new Date().toISOString().split('T')[0] }}
+                    InputProps={{ disableUnderline: false, sx: { color: 'white', '&::before': { borderColor: 'rgba(255,255,255,0.2)' }, '&::after': { borderColor: gold } } }}
+                    sx={{ '& input': { color: 'white', fontSize: '0.88rem', pb: 0.5 }, '& input[type="date"]::-webkit-calendar-picker-indicator': { filter: 'invert(0.6)' } }}
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.62rem', letterSpacing: 2, fontFamily: 'sans-serif', mb: 0.75 }}>CHECK-OUT</Typography>
+                  <TextField type="date" fullWidth variant="standard" value={bookingDates.checkOut}
+                    onChange={(e) => setBookingDates(p => ({ ...p, checkOut: e.target.value }))}
+                    inputProps={{ min: bookingDates.checkIn }}
+                    InputProps={{ disableUnderline: false, sx: { color: 'white', '&::before': { borderColor: 'rgba(255,255,255,0.2)' }, '&::after': { borderColor: gold } } }}
+                    sx={{ '& input': { color: 'white', fontSize: '0.88rem', pb: 0.5 }, '& input[type="date"]::-webkit-calendar-picker-indicator': { filter: 'invert(0.6)' } }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.62rem', letterSpacing: 2, fontFamily: 'sans-serif', mb: 0.75 }}>NUMBER OF GUESTS</Typography>
+                  <TextField type="number" fullWidth variant="standard" value={bookingDates.guests}
+                    onChange={(e) => setBookingDates(p => ({ ...p, guests: Math.min(selectedRoom.roomType.maxOccupancy, Math.max(1, parseInt(e.target.value) || 1)) }))}
+                    inputProps={{ min: 1, max: selectedRoom.roomType.maxOccupancy }}
+                    InputProps={{ disableUnderline: false, sx: { color: 'white', '&::before': { borderColor: 'rgba(255,255,255,0.2)' }, '&::after': { borderColor: gold } } }}
+                    sx={{ '& input': { color: 'white', fontSize: '0.88rem', pb: 0.5 } }}
+                    helperText={<Typography sx={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.7rem' }}>Max {selectedRoom.roomType.maxOccupancy} guests for this room</Typography>}
+                  />
+                </Grid>
+              </Grid>
+
+              {/* ── Step 2: Contact Info ── */}
+              <Typography sx={{ color: gold, fontSize: '0.6rem', letterSpacing: 3, fontFamily: 'sans-serif', mb: 2 }}>STEP 2 — YOUR DETAILS</Typography>
+              <Grid container spacing={2} mb={3}>
+                <Grid item xs={12}>
+                  <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.62rem', letterSpacing: 2, fontFamily: 'sans-serif', mb: 0.75 }}>FULL NAME *</Typography>
+                  <TextField fullWidth variant="standard" value={bookingDates.name}
+                    onChange={(e) => setBookingDates(p => ({ ...p, name: e.target.value }))}
+                    placeholder="Your full name"
+                    InputProps={{ disableUnderline: false, sx: { color: 'white', '&::before': { borderColor: 'rgba(255,255,255,0.2)' }, '&::after': { borderColor: gold } } }}
+                    sx={{ '& input': { color: 'white', fontSize: '0.88rem', pb: 0.5, '&::placeholder': { color: 'rgba(255,255,255,0.2)' } } }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.62rem', letterSpacing: 2, fontFamily: 'sans-serif', mb: 0.75 }}>PHONE NUMBER *</Typography>
+                  <TextField fullWidth variant="standard" value={bookingDates.phone}
+                    onChange={(e) => setBookingDates(p => ({ ...p, phone: e.target.value }))}
+                    placeholder="+251 9XX XXX XXX"
+                    InputProps={{ disableUnderline: false, sx: { color: 'white', '&::before': { borderColor: 'rgba(255,255,255,0.2)' }, '&::after': { borderColor: gold } } }}
+                    sx={{ '& input': { color: 'white', fontSize: '0.88rem', pb: 0.5, '&::placeholder': { color: 'rgba(255,255,255,0.2)' } } }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.62rem', letterSpacing: 2, fontFamily: 'sans-serif', mb: 0.75 }}>SPECIAL REQUESTS (OPTIONAL)</Typography>
+                  <TextField fullWidth variant="standard" multiline rows={2} value={bookingDates.specialRequests}
+                    onChange={(e) => setBookingDates(p => ({ ...p, specialRequests: e.target.value }))}
+                    placeholder="Early check-in, dietary needs, etc."
+                    InputProps={{ disableUnderline: false, sx: { color: 'white', '&::before': { borderColor: 'rgba(255,255,255,0.2)' }, '&::after': { borderColor: gold } } }}
+                    sx={{ '& textarea': { color: 'white', fontSize: '0.88rem', '&::placeholder': { color: 'rgba(255,255,255,0.2)' } } }}
+                  />
+                </Grid>
+              </Grid>
+
+              {/* ── Price Summary ── */}
+              <Box sx={{ bgcolor: 'rgba(201,169,110,0.06)', border: '1px solid rgba(201,169,110,0.2)', p: 2.5 }}>
+                <Typography sx={{ color: gold, fontSize: '0.6rem', letterSpacing: 3, fontFamily: 'sans-serif', mb: 2 }}>PRICE SUMMARY</Typography>
+                <Box display="flex" flexDirection="column" gap={1.25}>
+                  {[
+                    { label: `${calcNights()} night${calcNights() > 1 ? 's' : ''} × ETB ${selectedRoom.pricing.baseRate.toLocaleString()}`, val: `ETB ${(selectedRoom.pricing.baseRate * calcNights()).toLocaleString()}` },
+                    { label: 'Taxes & fees (10%)', val: `ETB ${(selectedRoom.pricing.baseRate * calcNights() * 0.1).toLocaleString()}` },
+                    { label: 'Service fee', val: 'ETB 200' },
+                  ].map((row) => (
+                    <Box key={row.label} display="flex" justifyContent="space-between">
+                      <Typography sx={{ color: 'rgba(255,255,255,0.45)', fontFamily: 'sans-serif', fontSize: '0.82rem' }}>{row.label}</Typography>
+                      <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontFamily: 'sans-serif', fontSize: '0.82rem' }}>{row.val}</Typography>
+                    </Box>
+                  ))}
+                  <Divider sx={{ borderColor: 'rgba(201,169,110,0.2)', my: 0.5 }} />
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography sx={{ color: 'white', fontFamily: 'serif', fontWeight: 600, fontSize: '1rem' }}>Total</Typography>
+                    <Typography sx={{ color: gold, fontFamily: 'serif', fontWeight: 700, fontSize: '1.2rem' }}>ETB {calcTotal(selectedRoom.pricing.baseRate)}</Typography>
                   </Box>
-                ))}
-                <Divider sx={{ borderColor: 'rgba(255,255,255,0.07)' }} />
-                <Box display="flex" justifyContent="space-between">
-                  <Typography sx={{ color: 'white', fontFamily: 'serif', fontWeight: 600, fontSize: '1rem' }}>Total</Typography>
-                  <Typography sx={{ color: gold, fontFamily: 'serif', fontWeight: 700, fontSize: '1.1rem' }}>ETB {(selectedRoom.pricing.baseRate * calcNights() * 1.1 + 200).toLocaleString()}</Typography>
                 </Box>
               </Box>
             </DialogContent>
-            <DialogActions sx={{ p: 3, borderTop: '1px solid rgba(255,255,255,0.07)', gap: 1.5 }}>
-              <Button onClick={() => setBookingOpen(false)} sx={{ color: 'rgba(255,255,255,0.35)', fontFamily: 'sans-serif', fontSize: '0.72rem', letterSpacing: 2 }}>CANCEL</Button>
-              <Button onClick={() => { toast('Please login to complete your booking', { icon: '🔐' }); navigate('/login', { state: { bookingInfo: { roomId: selectedRoom._id } } }); }}
-                sx={{ bgcolor: gold, color: dark, borderRadius: 0, px: 4, py: 1.5, fontSize: '0.72rem', letterSpacing: 2, fontWeight: 700, fontFamily: 'sans-serif', '&:hover': { bgcolor: '#b8935a' } }}>
-                PROCEED TO BOOK
+
+            <DialogActions sx={{ p: 3, borderTop: '1px solid rgba(255,255,255,0.07)', flexDirection: 'column', gap: 1.5, alignItems: 'stretch' }}>
+              <Button
+                fullWidth
+                disabled={!bookingDates.name.trim() || !bookingDates.phone.trim()}
+                onClick={() => {
+                  toast.success(`Booking request sent! We'll call ${bookingDates.name} at ${bookingDates.phone} to confirm.`);
+                  setBookingOpen(false);
+                  setBookingDates({ checkIn: new Date().toISOString().split('T')[0], checkOut: new Date(Date.now() + 86400000).toISOString().split('T')[0], guests: 1, name: '', phone: '', specialRequests: '' });
+                }}
+                sx={{ bgcolor: gold, color: dark, borderRadius: 0, py: 1.8, fontSize: '0.78rem', letterSpacing: 3, fontWeight: 700, fontFamily: 'sans-serif', '&:hover': { bgcolor: '#b8935a' }, '&:disabled': { bgcolor: 'rgba(201,169,110,0.3)', color: 'rgba(0,0,0,0.4)' } }}
+              >
+                CONFIRM BOOKING REQUEST
+              </Button>
+              <Typography sx={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.7rem', fontFamily: 'sans-serif', textAlign: 'center' }}>
+                Our team will call you within 30 minutes to confirm your reservation.
+              </Typography>
+              <Button onClick={() => setBookingOpen(false)} sx={{ color: 'rgba(255,255,255,0.3)', fontFamily: 'sans-serif', fontSize: '0.72rem', letterSpacing: 1 }}>
+                Cancel
+              </Button>
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
+
+      {/* ══════════════════════════════════════════════════════════════
+          FOOD INQUIRY DIALOG
+      ══════════════════════════════════════════════════════════════ */}
+      <Dialog open={foodDialogOpen} onClose={() => setFoodDialogOpen(false)} maxWidth="xs" fullWidth
+        PaperProps={{ sx: { bgcolor: '#111', color: 'white', borderRadius: 0, border: '1px solid rgba(255,255,255,0.1)', m: { xs: 1, sm: 3 } } }}>
+        {selectedFoodItem && (
+          <>
+            <DialogTitle sx={{ p: 3, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+              <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+                <Box>
+                  <Typography sx={{ color: gold, fontSize: '0.6rem', letterSpacing: 3, fontFamily: 'sans-serif', mb: 0.5 }}>RESERVE A TABLE</Typography>
+                  <Typography sx={{ color: 'white', fontFamily: 'serif', fontSize: '1.1rem', fontWeight: 600 }}>{selectedFoodItem.name}</Typography>
+                  <Typography sx={{ color: gold, fontFamily: 'serif', fontSize: '0.8rem', fontStyle: 'italic' }}>{selectedFoodItem.nameAm}</Typography>
+                </Box>
+                <IconButton onClick={() => setFoodDialogOpen(false)} sx={{ color: 'rgba(255,255,255,0.35)', '&:hover': { color: 'white' } }}><CloseIcon /></IconButton>
+              </Box>
+            </DialogTitle>
+            <DialogContent sx={{ p: 3 }}>
+              {/* Food image */}
+              <Box sx={{ height: 140, backgroundImage: `url(${selectedFoodItem.img})`, backgroundSize: 'cover', backgroundPosition: 'center', mb: 2.5, position: 'relative' }}>
+                <Box sx={{ position: 'absolute', bottom: 10, right: 10, bgcolor: gold, px: 1.5, py: 0.4 }}>
+                  <Typography sx={{ color: dark, fontWeight: 700, fontSize: '0.85rem', fontFamily: 'sans-serif' }}>ETB {selectedFoodItem.price}</Typography>
+                </Box>
+              </Box>
+              <Typography sx={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.82rem', fontFamily: 'sans-serif', lineHeight: 1.7, mb: 3 }}>
+                {selectedFoodItem.desc}
+              </Typography>
+
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.62rem', letterSpacing: 2, fontFamily: 'sans-serif', mb: 0.75 }}>YOUR NAME *</Typography>
+                  <TextField fullWidth variant="standard" value={foodOrder.name}
+                    onChange={(e) => setFoodOrder(p => ({ ...p, name: e.target.value }))}
+                    placeholder="Full name"
+                    InputProps={{ disableUnderline: false, sx: { color: 'white', '&::before': { borderColor: 'rgba(255,255,255,0.2)' }, '&::after': { borderColor: gold } } }}
+                    sx={{ '& input': { color: 'white', fontSize: '0.88rem', pb: 0.5, '&::placeholder': { color: 'rgba(255,255,255,0.2)' } } }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.62rem', letterSpacing: 2, fontFamily: 'sans-serif', mb: 0.75 }}>PHONE NUMBER *</Typography>
+                  <TextField fullWidth variant="standard" value={foodOrder.phone}
+                    onChange={(e) => setFoodOrder(p => ({ ...p, phone: e.target.value }))}
+                    placeholder="+251 9XX XXX XXX"
+                    InputProps={{ disableUnderline: false, sx: { color: 'white', '&::before': { borderColor: 'rgba(255,255,255,0.2)' }, '&::after': { borderColor: gold } } }}
+                    sx={{ '& input': { color: 'white', fontSize: '0.88rem', pb: 0.5, '&::placeholder': { color: 'rgba(255,255,255,0.2)' } } }}
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.62rem', letterSpacing: 2, fontFamily: 'sans-serif', mb: 0.75 }}>DATE</Typography>
+                  <TextField type="date" fullWidth variant="standard" value={foodOrder.date}
+                    onChange={(e) => setFoodOrder(p => ({ ...p, date: e.target.value }))}
+                    inputProps={{ min: new Date().toISOString().split('T')[0] }}
+                    InputProps={{ disableUnderline: false, sx: { color: 'white', '&::before': { borderColor: 'rgba(255,255,255,0.2)' }, '&::after': { borderColor: gold } } }}
+                    sx={{ '& input': { color: 'white', fontSize: '0.82rem', pb: 0.5 }, '& input[type="date"]::-webkit-calendar-picker-indicator': { filter: 'invert(0.6)' } }}
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.62rem', letterSpacing: 2, fontFamily: 'sans-serif', mb: 0.75 }}>TIME</Typography>
+                  <TextField type="time" fullWidth variant="standard" value={foodOrder.time}
+                    onChange={(e) => setFoodOrder(p => ({ ...p, time: e.target.value }))}
+                    InputProps={{ disableUnderline: false, sx: { color: 'white', '&::before': { borderColor: 'rgba(255,255,255,0.2)' }, '&::after': { borderColor: gold } } }}
+                    sx={{ '& input': { color: 'white', fontSize: '0.82rem', pb: 0.5 }, '& input[type="time"]::-webkit-calendar-picker-indicator': { filter: 'invert(0.6)' } }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.62rem', letterSpacing: 2, fontFamily: 'sans-serif', mb: 0.75 }}>NUMBER OF GUESTS</Typography>
+                  <TextField type="number" fullWidth variant="standard" value={foodOrder.guests}
+                    onChange={(e) => setFoodOrder(p => ({ ...p, guests: Math.max(1, parseInt(e.target.value) || 1) }))}
+                    inputProps={{ min: 1, max: 20 }}
+                    InputProps={{ disableUnderline: false, sx: { color: 'white', '&::before': { borderColor: 'rgba(255,255,255,0.2)' }, '&::after': { borderColor: gold } } }}
+                    sx={{ '& input': { color: 'white', fontSize: '0.88rem', pb: 0.5 } }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.62rem', letterSpacing: 2, fontFamily: 'sans-serif', mb: 0.75 }}>NOTES (OPTIONAL)</Typography>
+                  <TextField fullWidth variant="standard" multiline rows={2} value={foodOrder.notes}
+                    onChange={(e) => setFoodOrder(p => ({ ...p, notes: e.target.value }))}
+                    placeholder="Allergies, preferences, occasion..."
+                    InputProps={{ disableUnderline: false, sx: { color: 'white', '&::before': { borderColor: 'rgba(255,255,255,0.2)' }, '&::after': { borderColor: gold } } }}
+                    sx={{ '& textarea': { color: 'white', fontSize: '0.88rem', '&::placeholder': { color: 'rgba(255,255,255,0.2)' } } }}
+                  />
+                </Grid>
+              </Grid>
+            </DialogContent>
+            <DialogActions sx={{ p: 3, borderTop: '1px solid rgba(255,255,255,0.07)', flexDirection: 'column', gap: 1.5, alignItems: 'stretch' }}>
+              <Button
+                fullWidth
+                disabled={!foodOrder.name.trim() || !foodOrder.phone.trim()}
+                onClick={() => {
+                  toast.success(`Table reserved! We'll confirm with ${foodOrder.name} at ${foodOrder.phone}.`);
+                  setFoodDialogOpen(false);
+                  setFoodOrder({ name: '', phone: '', date: new Date().toISOString().split('T')[0], time: '12:00', guests: 2, notes: '' });
+                }}
+                sx={{ bgcolor: gold, color: dark, borderRadius: 0, py: 1.8, fontSize: '0.78rem', letterSpacing: 3, fontWeight: 700, fontFamily: 'sans-serif', '&:hover': { bgcolor: '#b8935a' }, '&:disabled': { bgcolor: 'rgba(201,169,110,0.3)', color: 'rgba(0,0,0,0.4)' } }}
+              >
+                RESERVE TABLE
+              </Button>
+              <Typography sx={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.7rem', fontFamily: 'sans-serif', textAlign: 'center' }}>
+                We'll call you to confirm your table reservation.
+              </Typography>
+              <Button onClick={() => setFoodDialogOpen(false)} sx={{ color: 'rgba(255,255,255,0.3)', fontFamily: 'sans-serif', fontSize: '0.72rem', letterSpacing: 1 }}>
+                Cancel
               </Button>
             </DialogActions>
           </>
