@@ -1129,10 +1129,34 @@ export const LandingPage: React.FC = () => {
               <Button
                 fullWidth
                 disabled={!bookingDates.name.trim() || !bookingDates.phone.trim()}
-                onClick={() => {
-                  toast.success(`Booking request sent! We'll call ${bookingDates.name} at ${bookingDates.phone} to confirm.`);
-                  setBookingOpen(false);
-                  setBookingDates({ checkIn: new Date().toISOString().split('T')[0], checkOut: new Date(Date.now() + 86400000).toISOString().split('T')[0], guests: 1, name: '', phone: '', specialRequests: '' });
+                onClick={async () => {
+                  if (!bookingDates.name.trim() || !bookingDates.phone.trim()) return;
+                  try {
+                    const res = await fetch('http://localhost:3001/api/public/booking-requests', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        guestName: bookingDates.name,
+                        phone: bookingDates.phone,
+                        roomId: selectedRoom._id,
+                        roomName: selectedRoom.roomType.name,
+                        roomRate: selectedRoom.pricing.baseRate,
+                        checkIn: bookingDates.checkIn,
+                        checkOut: bookingDates.checkOut,
+                        guests: bookingDates.guests,
+                        specialRequests: bookingDates.specialRequests,
+                      }),
+                    });
+                    if (res.ok) {
+                      toast.success(`Booking request sent! We'll call ${bookingDates.name} at ${bookingDates.phone} to confirm.`);
+                      setBookingOpen(false);
+                      setBookingDates({ checkIn: new Date().toISOString().split('T')[0], checkOut: new Date(Date.now() + 86400000).toISOString().split('T')[0], guests: 1, name: '', phone: '', specialRequests: '' });
+                    } else {
+                      toast.error('Failed to submit. Please call us directly.');
+                    }
+                  } catch {
+                    toast.error('Network error. Please call us at +251 911 000 000');
+                  }
                 }}
                 sx={{ bgcolor: gold, color: dark, borderRadius: 0, py: 1.8, fontSize: '0.78rem', letterSpacing: 3, fontWeight: 700, fontFamily: 'sans-serif', '&:hover': { bgcolor: '#b8935a' }, '&:disabled': { bgcolor: 'rgba(201,169,110,0.3)', color: 'rgba(0,0,0,0.4)' } }}
               >
@@ -1237,10 +1261,35 @@ export const LandingPage: React.FC = () => {
               <Button
                 fullWidth
                 disabled={!foodOrder.name.trim() || !foodOrder.phone.trim()}
-                onClick={() => {
-                  toast.success(`Table reserved! We'll confirm with ${foodOrder.name} at ${foodOrder.phone}.`);
-                  setFoodDialogOpen(false);
-                  setFoodOrder({ name: '', phone: '', date: new Date().toISOString().split('T')[0], time: '12:00', guests: 2, notes: '' });
+                onClick={async () => {
+                  if (!foodOrder.name.trim() || !foodOrder.phone.trim()) return;
+                  try {
+                    const res = await fetch('http://localhost:3001/api/public/food-orders', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        guestName: foodOrder.name,
+                        phone: foodOrder.phone,
+                        itemName: selectedFoodItem.name,
+                        itemNameAm: selectedFoodItem.nameAm,
+                        itemPrice: selectedFoodItem.price,
+                        category: MENU_TABS[menuTab],
+                        date: foodOrder.date,
+                        time: foodOrder.time,
+                        guests: foodOrder.guests,
+                        notes: foodOrder.notes,
+                      }),
+                    });
+                    if (res.ok) {
+                      toast.success(`Table reserved! We'll confirm with ${foodOrder.name} at ${foodOrder.phone}.`);
+                      setFoodDialogOpen(false);
+                      setFoodOrder({ name: '', phone: '', date: new Date().toISOString().split('T')[0], time: '12:00', guests: 2, notes: '' });
+                    } else {
+                      toast.error('Failed to submit. Please call us directly.');
+                    }
+                  } catch {
+                    toast.error('Network error. Please call us at +251 911 000 000');
+                  }
                 }}
                 sx={{ bgcolor: gold, color: dark, borderRadius: 0, py: 1.8, fontSize: '0.78rem', letterSpacing: 3, fontWeight: 700, fontFamily: 'sans-serif', '&:hover': { bgcolor: '#b8935a' }, '&:disabled': { bgcolor: 'rgba(201,169,110,0.3)', color: 'rgba(0,0,0,0.4)' } }}
               >

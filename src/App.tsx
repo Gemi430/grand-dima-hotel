@@ -20,6 +20,8 @@ import { HousekeepingPage } from './pages/HousekeepingPage';
 import { StaffPage } from './pages/StaffPage';
 import { BillingPage } from './pages/BillingPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { BookingRequestsPage } from './pages/BookingRequestsPage';
+import { FoodOrdersPage } from './pages/FoodOrdersPage';
 
 function App() {
   const dispatch = useDispatch();
@@ -151,6 +153,22 @@ function App() {
           element={
             <ProtectedRoute>
               <ReportsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/booking-requests/*"
+          element={
+            <ProtectedRoute>
+              <BookingRequestsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/food-orders/*"
+          element={
+            <ProtectedRoute>
+              <FoodOrdersPage />
             </ProtectedRoute>
           }
         />

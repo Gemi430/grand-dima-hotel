@@ -90,8 +90,8 @@ export const HousekeepingPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<TaskFormData>({
     roomId: '',
-    taskType: 'cleaning',
-    priority: 'medium',
+    taskType: 'checkout_cleaning',
+    priority: 'normal',
     scheduledFor: new Date().toISOString().split('T')[0],
     assignedTo: '',
     description: '',
@@ -170,8 +170,7 @@ export const HousekeepingPage: React.FC = () => {
       setFormData({
         roomId: task.roomId._id,
         taskType: task.taskType,
-        priority: task.priority,
-        scheduledFor: task.scheduledFor.split('T')[0],
+        priority: task.priority,        scheduledFor: task.scheduledFor.split('T')[0],
         assignedTo: task.assignedTo?._id || '',
         description: task.description || '',
         estimatedDuration: task.estimatedDuration?.toString() || '60',
@@ -180,8 +179,8 @@ export const HousekeepingPage: React.FC = () => {
       setEditingTask(null);
       setFormData({
         roomId: '',
-        taskType: 'cleaning',
-        priority: 'medium',
+        taskType: 'checkout_cleaning',
+        priority: 'normal',
         scheduledFor: new Date().toISOString().split('T')[0],
         assignedTo: '',
         description: '',
@@ -342,9 +341,11 @@ export const HousekeepingPage: React.FC = () => {
 
   const getPriorityColor = (priority: string): 'default' | 'warning' | 'error' => {
     switch (priority) {
+      case 'urgent':
+        return 'error';
       case 'high':
         return 'error';
-      case 'medium':
+      case 'normal':
         return 'warning';
       default:
         return 'default';
@@ -522,12 +523,10 @@ export const HousekeepingPage: React.FC = () => {
                   label="Task Type"
                   onChange={(e) => handleInputChange('taskType', e.target.value)}
                 >
-                  <MenuItem value="cleaning">Cleaning</MenuItem>
+                  <MenuItem value="checkout_cleaning">Checkout Cleaning</MenuItem>
+                  <MenuItem value="maintenance_cleaning">Maintenance Cleaning</MenuItem>
                   <MenuItem value="deep_cleaning">Deep Cleaning</MenuItem>
-                  <MenuItem value="turndown">Turndown Service</MenuItem>
                   <MenuItem value="inspection">Inspection</MenuItem>
-                  <MenuItem value="maintenance">Maintenance</MenuItem>
-                  <MenuItem value="laundry">Laundry</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -540,7 +539,7 @@ export const HousekeepingPage: React.FC = () => {
                   onChange={(e) => handleInputChange('priority', e.target.value)}
                 >
                   <MenuItem value="low">Low</MenuItem>
-                  <MenuItem value="medium">Medium</MenuItem>
+                  <MenuItem value="normal">Normal</MenuItem>
                   <MenuItem value="high">High</MenuItem>
                   <MenuItem value="urgent">Urgent</MenuItem>
                 </Select>

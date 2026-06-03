@@ -20,6 +20,8 @@ import {
   EventNote as BookingIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../store';
 import {
   useDashboardMetrics,
   useDashboardAlerts,
@@ -55,90 +57,90 @@ interface UpcomingDeparture {
   status: string;
 }
 
+// ── Brand colors matching the landing page ──────────────────────────────────
+const gold = '#c9a96e';
+const darkBg = '#0f0f0f';
+const cardBg = '#1a1a1a';
+const cardBorder = 'rgba(255,255,255,0.07)';
+
 // Stat card with icon, color, value, label, and optional progress bar
 interface StatCardProps {
   label: string;
   value: string | number;
   icon: React.ReactNode;
   color: string;
-  bgColor: string;
   subtitle?: string;
   progress?: number;
   onClick?: () => void;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ label, value, icon, color, bgColor, subtitle, progress, onClick }) => (
-  <Card
+const StatCard: React.FC<StatCardProps> = ({ label, value, icon, color, subtitle, progress, onClick }) => (
+  <Box
     onClick={onClick}
     sx={{
       cursor: onClick ? 'pointer' : 'default',
-      borderRadius: 3,
-      border: '1px solid',
-      borderColor: 'grey.100',
-      boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-      transition: 'all 0.25s ease',
+      bgcolor: cardBg,
+      border: `1px solid ${cardBorder}`,
+      p: 3,
+      transition: 'all 0.3s ease',
+      position: 'relative',
+      overflow: 'hidden',
+      '&::before': {
+        content: '""',
+        position: 'absolute',
+        top: 0, left: 0,
+        width: 3, height: '100%',
+        bgcolor: color,
+        opacity: 0,
+        transition: 'opacity 0.3s',
+      },
       '&:hover': onClick ? {
-        transform: 'translateY(-4px)',
-        boxShadow: `0 12px 24px ${color}22`,
         borderColor: color,
+        transform: 'translateY(-3px)',
+        boxShadow: `0 12px 32px rgba(0,0,0,0.4)`,
+        '&::before': { opacity: 1 },
       } : {},
     }}
   >
-    <CardContent sx={{ p: 3, '&:last-child': { pb: 3 } }}>
-      <Box display="flex" alignItems="flex-start" justifyContent="space-between" mb={2}>
-        <Box>
-          <Typography variant="body2" color="text.secondary" fontWeight={500} mb={0.5}>
-            {label}
+    <Box display="flex" alignItems="flex-start" justifyContent="space-between" mb={1.5}>
+      <Box>
+        <Typography sx={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.65rem', letterSpacing: 2.5, fontFamily: 'sans-serif', mb: 1, textTransform: 'uppercase' }}>
+          {label}
+        </Typography>
+        <Typography sx={{ color: 'white', fontFamily: '"Playfair Display", Georgia, serif', fontWeight: 700, fontSize: '2.2rem', lineHeight: 1 }}>
+          {value}
+        </Typography>
+        {subtitle && (
+          <Typography sx={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.72rem', fontFamily: 'sans-serif', mt: 0.75 }}>
+            {subtitle}
           </Typography>
-          <Typography variant="h4" fontWeight={700} color="text.primary" lineHeight={1}>
-            {value}
-          </Typography>
-          {subtitle && (
-            <Typography variant="caption" color="text.secondary" mt={0.5} display="block">
-              {subtitle}
-            </Typography>
-          )}
-        </Box>
-        <Box
-          sx={{
-            width: 52,
-            height: 52,
-            borderRadius: 2.5,
-            bgcolor: bgColor,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-            '& .MuiSvgIcon-root': { fontSize: 26, color },
-          }}
-        >
-          {icon}
-        </Box>
+        )}
       </Box>
-      {progress !== undefined && (
-        <Box>
-          <LinearProgress
-            variant="determinate"
-            value={Math.min(progress, 100)}
-            sx={{
-              height: 6,
-              borderRadius: 3,
-              bgcolor: bgColor,
-              '& .MuiLinearProgress-bar': { bgcolor: color, borderRadius: 3 },
-            }}
-          />
-          <Typography variant="caption" color="text.secondary" mt={0.5} display="block">
-            {progress}% occupancy
-          </Typography>
+      <Box sx={{ color, opacity: 0.8, '& .MuiSvgIcon-root': { fontSize: 28 } }}>
+        {icon}
+      </Box>
+    </Box>
+    {progress !== undefined && (
+      <Box mt={1.5}>
+        <Box sx={{ height: 3, bgcolor: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden' }}>
+          <Box sx={{ height: '100%', width: `${Math.min(progress, 100)}%`, bgcolor: color, borderRadius: 2, transition: 'width 1s ease' }} />
         </Box>
-      )}
-    </CardContent>
-  </Card>
+        <Typography sx={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.68rem', fontFamily: 'sans-serif', mt: 0.5 }}>
+          {progress}% occupancy
+        </Typography>
+      </Box>
+    )}
+  </Box>
 );
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { isConnected } = useSocket();
+  const user = useSelector((state: RootState) => state.auth.user);
+  const role = user?.role || '';
+  const canSeeRevenue = role === 'admin' || role === 'manager';
+  const canSeeReservations = role === 'admin' || role === 'manager' || role === 'front_desk';
+
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [recentAlerts, setRecentAlerts] = useState<Notification[]>([]);
   const [recentReservations, setRecentReservations] = useState<ReservationUpdate[]>([]);
@@ -148,6 +150,7 @@ export const DashboardPage: React.FC = () => {
   const [revenueBreakdown, setRevenueBreakdown] = useState<RevenueBreakdown | null>(null);
   const [upcomingArrivals, setUpcomingArrivals] = useState<UpcomingArrival[]>([]);
   const [upcomingDepartures, setUpcomingDepartures] = useState<UpcomingDeparture[]>([]);
+  const [housekeepingTasks, setHousekeepingTasks] = useState<any[]>([]);
   const [nextUpdateIn, setNextUpdateIn] = useState(30);
 
   useEffect(() => {
@@ -157,29 +160,44 @@ export const DashboardPage: React.FC = () => {
         const token = localStorage.getItem('token');
         const headers = { Authorization: `Bearer ${token}` };
 
-        const [metricsRes, revenueRes, arrivalsRes, departuresRes] = await Promise.allSettled([
-          fetch('http://localhost:3001/api/dashboard/metrics', { headers }),
-          fetch('http://localhost:3001/api/dashboard/revenue-breakdown', { headers }),
-          fetch('http://localhost:3001/api/dashboard/upcoming-arrivals', { headers }),
-          fetch('http://localhost:3001/api/dashboard/upcoming-departures', { headers }),
-        ]);
-
-        if (metricsRes.status === 'fulfilled' && metricsRes.value.ok) {
-          const d = await metricsRes.value.json();
+        // Fetch metrics — available to all roles
+        const metricsRes = await fetch('http://localhost:3001/api/dashboard/metrics', { headers }).catch(() => null);
+        if (metricsRes?.ok) {
+          const d = await metricsRes.json();
           setMetrics(d.data);
           setLastUpdate(new Date());
         }
-        if (revenueRes.status === 'fulfilled' && revenueRes.value.ok) {
-          const d = await revenueRes.value.json();
-          setRevenueBreakdown(d.data);
+
+        // Housekeeping tasks — all roles can see the count
+        const hkRes = await fetch('http://localhost:3001/api/housekeeping?limit=20&status=pending', { headers }).catch(() => null);
+        if (hkRes?.ok) {
+          const d = await hkRes.json();
+          setHousekeepingTasks(d.data || []);
         }
-        if (arrivalsRes.status === 'fulfilled' && arrivalsRes.value.ok) {
-          const d = await arrivalsRes.value.json();
-          setUpcomingArrivals(d.data || []);
+
+        // Revenue breakdown — admin & manager only
+        if (canSeeRevenue) {
+          const revenueRes = await fetch('http://localhost:3001/api/dashboard/revenue-breakdown', { headers }).catch(() => null);
+          if (revenueRes?.ok) {
+            const d = await revenueRes.json();
+            setRevenueBreakdown(d.data);
+          }
         }
-        if (departuresRes.status === 'fulfilled' && departuresRes.value.ok) {
-          const d = await departuresRes.value.json();
-          setUpcomingDepartures(d.data || []);
+
+        // Arrivals & departures — admin, manager, front_desk
+        if (canSeeReservations) {
+          const [arrivalsRes, departuresRes] = await Promise.allSettled([
+            fetch('http://localhost:3001/api/dashboard/upcoming-arrivals', { headers }),
+            fetch('http://localhost:3001/api/dashboard/upcoming-departures', { headers }),
+          ]);
+          if (arrivalsRes.status === 'fulfilled' && arrivalsRes.value.ok) {
+            const d = await arrivalsRes.value.json();
+            setUpcomingArrivals(d.data || []);
+          }
+          if (departuresRes.status === 'fulfilled' && departuresRes.value.ok) {
+            const d = await departuresRes.value.json();
+            setUpcomingDepartures(d.data || []);
+          }
         }
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -188,7 +206,8 @@ export const DashboardPage: React.FC = () => {
       }
     };
     fetchInitialData();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role]);
 
   const handleMetricsUpdate = useCallback((newMetrics: DashboardMetrics) => {
     setMetrics(newMetrics);
@@ -267,60 +286,64 @@ export const DashboardPage: React.FC = () => {
 
   if (loading) {
     return (
-      <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" minHeight="60vh" gap={2}>
-        <CircularProgress size={48} thickness={4} />
-        <Typography color="text.secondary">Loading dashboard...</Typography>
+      <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" minHeight="60vh" gap={2}
+        sx={{ bgcolor: darkBg }}>
+        <Box sx={{ width: 40, height: 40, borderRadius: '50%', border: `2px solid ${gold}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <CircularProgress size={20} sx={{ color: gold }} thickness={3} />
+        </Box>
+        <Typography sx={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', letterSpacing: 3, fontFamily: 'sans-serif' }}>
+          LOADING DASHBOARD
+        </Typography>
       </Box>
     );
   }
 
   return (
-    <Box sx={{ maxWidth: 1400, mx: 'auto' }}>
+    <Box sx={{ bgcolor: darkBg, minHeight: '100vh', p: { xs: 2, sm: 3 } }}>
 
       {/* Page Header */}
-      <Box display="flex" alignItems="center" justifyContent="space-between" mb={3} flexWrap="wrap" gap={2}>
+      <Box display="flex" alignItems="center" justifyContent="space-between" mb={4} flexWrap="wrap" gap={2}>
         <Box>
-          <Typography variant="h5" fontWeight={700} color="text.primary">
-            Overview
+          <Typography sx={{ color: gold, fontSize: '0.62rem', letterSpacing: 4, fontFamily: 'sans-serif', mb: 0.75 }}>
+            GRAND DIMA HOTEL
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Welcome back! Here's what's happening today.
+          <Typography sx={{ color: 'white', fontFamily: '"Playfair Display", Georgia, serif', fontWeight: 700, fontSize: { xs: '1.6rem', md: '2rem' } }}>
+            {role === 'housekeeping' ? 'Housekeeping Dashboard' : role === 'front_desk' ? 'Front Desk Overview' : 'Dashboard Overview'}
+          </Typography>
+          <Typography sx={{ color: 'rgba(255,255,255,0.35)', fontFamily: 'sans-serif', fontSize: '0.82rem', mt: 0.5 }}>
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </Typography>
         </Box>
         <Box display="flex" alignItems="center" gap={1.5} flexWrap="wrap">
           {!isConnected && (
-            <Chip
-              icon={<ErrorIcon />}
-              label="Offline"
-              color="error"
-              size="small"
-              variant="outlined"
-            />
+            <Box sx={{ px: 2, py: 0.75, bgcolor: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)' }}>
+              <Typography sx={{ color: '#f87171', fontSize: '0.68rem', letterSpacing: 2, fontFamily: 'sans-serif' }}>OFFLINE</Typography>
+            </Box>
           )}
           {lastUpdate && (
-            <Chip
-              icon={<RefreshIcon />}
-              label={`Updated ${getTimeSinceUpdate()}`}
-              size="small"
-              variant="outlined"
-              sx={{ borderColor: 'grey.300', color: 'text.secondary' }}
-            />
+            <Box sx={{ px: 2, py: 0.75, bgcolor: 'rgba(255,255,255,0.04)', border: `1px solid ${cardBorder}` }}>
+              <Typography sx={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.68rem', letterSpacing: 1.5, fontFamily: 'sans-serif' }}>
+                Updated {getTimeSinceUpdate()}
+              </Typography>
+            </Box>
           )}
           {isConnected && (
-            <Chip
-              icon={<CheckCircleIcon />}
-              label={`Live · ${nextUpdateIn}s`}
-              size="small"
-              sx={{ bgcolor: 'rgba(16,185,129,0.1)', color: '#059669', border: 'none', fontWeight: 600 }}
-            />
+            <Box sx={{ px: 2, py: 0.75, bgcolor: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#10b981' }} />
+              <Typography sx={{ color: '#10b981', fontSize: '0.68rem', letterSpacing: 2, fontFamily: 'sans-serif' }}>
+                LIVE · {nextUpdateIn}s
+              </Typography>
+            </Box>
           )}
         </Box>
       </Box>
 
       {!isConnected && (
-        <Alert severity="warning" sx={{ mb: 3, borderRadius: 2 }}>
-          Real-time updates unavailable. Data may not reflect the latest changes.
-        </Alert>
+        <Box sx={{ mb: 3, p: 2, bgcolor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+          <Typography sx={{ color: '#f87171', fontSize: '0.82rem', fontFamily: 'sans-serif' }}>
+            Real-time updates unavailable. Data may not reflect the latest changes.
+          </Typography>
+        </Box>
       )}
 
       {/* Primary Stats Row */}
@@ -331,8 +354,7 @@ export const DashboardPage: React.FC = () => {
               label="Total Rooms"
               value={metrics.occupancy.total}
               icon={<HotelIcon />}
-              color="#2563eb"
-              bgColor="#eff6ff"
+              color={gold}
               subtitle="All room inventory"
               onClick={() => navigate('/rooms')}
             />
@@ -342,8 +364,7 @@ export const DashboardPage: React.FC = () => {
               label="Available"
               value={metrics.occupancy.available}
               icon={<CheckCircleIcon />}
-              color="#059669"
-              bgColor="#f0fdf4"
+              color="#10b981"
               subtitle="Ready to book"
               progress={metrics.occupancy.total > 0 ? Math.round((metrics.occupancy.available / metrics.occupancy.total) * 100) : 0}
               onClick={() => navigate('/rooms')}
@@ -354,8 +375,7 @@ export const DashboardPage: React.FC = () => {
               label="Occupied"
               value={metrics.occupancy.occupied}
               icon={<TrendingUpIcon />}
-              color="#dc2626"
-              bgColor="#fef2f2"
+              color="#ef4444"
               subtitle={`${metrics.occupancy.occupancyRate}% occupancy rate`}
               progress={Number(metrics.occupancy.occupancyRate)}
               onClick={() => navigate('/reservations')}
@@ -366,8 +386,7 @@ export const DashboardPage: React.FC = () => {
               label="Today's Revenue"
               value={`$${metrics.revenue.today.toLocaleString()}`}
               icon={<MoneyIcon />}
-              color="#7c3aed"
-              bgColor="#f5f3ff"
+              color={gold}
               subtitle="All transactions today"
               onClick={() => navigate('/billing')}
             />
@@ -378,35 +397,36 @@ export const DashboardPage: React.FC = () => {
       {/* Secondary Stats Row */}
       {metrics && (
         <Grid container spacing={3} mb={3}>
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard
-              label="Today's Arrivals"
-              value={metrics.reservations.arrivals}
-              icon={<ArrivalIcon />}
-              color="#0891b2"
-              bgColor="#ecfeff"
-              subtitle="Expected check-ins"
-              onClick={() => navigate('/reservations')}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <StatCard
-              label="Today's Departures"
-              value={metrics.reservations.departures}
-              icon={<DepartureIcon />}
-              color="#d97706"
-              bgColor="#fffbeb"
-              subtitle="Expected check-outs"
-              onClick={() => navigate('/reservations')}
-            />
-          </Grid>
+          {canSeeReservations && (
+            <Grid item xs={12} sm={6} md={3}>
+              <StatCard
+                label="Today's Arrivals"
+                value={metrics.reservations.arrivals}
+                icon={<ArrivalIcon />}
+                color="#38bdf8"
+                subtitle="Expected check-ins"
+                onClick={() => navigate('/reservations')}
+              />
+            </Grid>
+          )}
+          {canSeeReservations && (
+            <Grid item xs={12} sm={6} md={3}>
+              <StatCard
+                label="Today's Departures"
+                value={metrics.reservations.departures}
+                icon={<DepartureIcon />}
+                color="#fb923c"
+                subtitle="Expected check-outs"
+                onClick={() => navigate('/reservations')}
+              />
+            </Grid>
+          )}
           <Grid item xs={12} sm={6} md={3}>
             <StatCard
               label="Maintenance"
               value={metrics.occupancy.maintenance}
               icon={<MaintenanceIcon />}
-              color="#b45309"
-              bgColor="#fef3c7"
+              color="#fbbf24"
               subtitle="Rooms under maintenance"
               onClick={() => navigate('/rooms')}
             />
@@ -416,8 +436,7 @@ export const DashboardPage: React.FC = () => {
               label="Housekeeping"
               value={metrics.housekeeping.pendingTasks}
               icon={<CleaningIcon />}
-              color="#0d9488"
-              bgColor="#f0fdfa"
+              color="#34d399"
               subtitle="Pending tasks"
               onClick={() => navigate('/housekeeping')}
             />
@@ -428,14 +447,14 @@ export const DashboardPage: React.FC = () => {
       {/* Main Content Grid */}
       <Grid container spacing={3}>
 
-        {/* Revenue Breakdown */}
-        {revenueBreakdown && (
+        {/* Revenue Breakdown — admin & manager only */}
+        {canSeeRevenue && revenueBreakdown && (
           <Grid item xs={12} md={4}>
-            <Card sx={{ borderRadius: 3, border: '1px solid', borderColor: 'grey.100', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', height: '100%' }}>
+            <Card sx={{ bgcolor: cardBg, border: "1px solid ${cardBorder}", height: '100%', borderRadius: 0 }}>
               <CardContent sx={{ p: 3 }}>
                 <Box display="flex" alignItems="center" justifyContent="space-between" mb={2.5}>
-                  <Typography variant="subtitle1" fontWeight={700}>Revenue Breakdown</Typography>
-                  <Chip label="Today" size="small" sx={{ bgcolor: '#f0fdf4', color: '#059669', fontWeight: 600, fontSize: '0.7rem' }} />
+                  <Typography sx={{ color: 'white', fontFamily: 'serif', fontWeight: 600, fontSize: '1rem' }}>Revenue Breakdown</Typography>
+                  <Chip label="Today" size="small" sx={{ bgcolor: 'rgba(16,185,129,0.1)', color: '#10b981', fontWeight: 600, fontSize: '0.7rem', border: 'none' }} />
                 </Box>
                 <Box display="flex" flexDirection="column" gap={2}>
                   {[
@@ -451,7 +470,7 @@ export const DashboardPage: React.FC = () => {
                       <LinearProgress
                         variant="determinate"
                         value={item.pct}
-                        sx={{ height: 6, borderRadius: 3, bgcolor: '#f1f5f9', '& .MuiLinearProgress-bar': { bgcolor: item.color, borderRadius: 3 } }}
+                        sx={{ height: 6, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.08)', '& .MuiLinearProgress-bar': { bgcolor: item.color, borderRadius: 3 } }}
                       />
                     </Box>
                   ))}
@@ -468,16 +487,16 @@ export const DashboardPage: React.FC = () => {
           </Grid>
         )}
 
-        {/* Upcoming Arrivals */}
-        <Grid item xs={12} md={revenueBreakdown ? 4 : 6}>
-          <Card sx={{ borderRadius: 3, border: '1px solid', borderColor: 'grey.100', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', height: '100%' }}>
+        {/* Upcoming Arrivals — front_desk, manager, admin */}
+        {canSeeReservations && <Grid item xs={12} md={revenueBreakdown ? 4 : 6}>
+          <Card sx={{ bgcolor: cardBg, border: "1px solid ${cardBorder}", height: '100%', borderRadius: 0 }}>
             <CardContent sx={{ p: 3 }}>
               <Box display="flex" alignItems="center" justifyContent="space-between" mb={2.5}>
                 <Box display="flex" alignItems="center" gap={1}>
-                  <Box sx={{ width: 32, height: 32, borderRadius: 1.5, bgcolor: '#ecfeff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Box sx={{ width: 32, height: 32, borderRadius: 1.5, bgcolor: 'rgba(56,189,248,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <ArrivalIcon sx={{ fontSize: 18, color: '#0891b2' }} />
                   </Box>
-                  <Typography variant="subtitle1" fontWeight={700}>Arrivals Today</Typography>
+                  <Typography sx={{ color: 'white', fontFamily: 'serif', fontWeight: 600, fontSize: '1rem' }}>Arrivals Today</Typography>
                 </Box>
                 <Tooltip title="View all reservations">
                   <IconButton size="small" onClick={() => navigate('/reservations')} sx={{ color: 'text.secondary' }}>
@@ -498,9 +517,9 @@ export const DashboardPage: React.FC = () => {
                       display="flex"
                       alignItems="center"
                       gap={1.5}
-                      sx={{ p: 1.5, borderRadius: 2, bgcolor: '#f8fafc', transition: 'all 0.2s', '&:hover': { bgcolor: '#eff6ff' } }}
+                      sx={{ p: 1.5, borderRadius: 2, bgcolor: 'rgba(255,255,255,0.03)', transition: 'all 0.2s', '&:hover': { bgcolor: 'rgba(201,169,110,0.06)' } }}
                     >
-                      <Avatar sx={{ width: 36, height: 36, bgcolor: '#dbeafe', color: '#2563eb', fontSize: '0.8rem', fontWeight: 700 }}>
+                      <Avatar sx={{ width: 36, height: 36, bgcolor: 'rgba(201,169,110,0.15)', color: gold, fontSize: '0.8rem', fontWeight: 700 }}>
                         {arrival.guestName.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
                       </Avatar>
                       <Box flexGrow={1} minWidth={0}>
@@ -519,18 +538,18 @@ export const DashboardPage: React.FC = () => {
               )}
             </CardContent>
           </Card>
-        </Grid>
+        </Grid>}
 
-        {/* Upcoming Departures */}
-        <Grid item xs={12} md={revenueBreakdown ? 4 : 6}>
-          <Card sx={{ borderRadius: 3, border: '1px solid', borderColor: 'grey.100', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', height: '100%' }}>
+        {/* Upcoming Departures — front_desk, manager, admin */}
+        {canSeeReservations && <Grid item xs={12} md={revenueBreakdown ? 4 : 6}>
+          <Card sx={{ bgcolor: cardBg, border: "1px solid ${cardBorder}", height: '100%', borderRadius: 0 }}>
             <CardContent sx={{ p: 3 }}>
               <Box display="flex" alignItems="center" justifyContent="space-between" mb={2.5}>
                 <Box display="flex" alignItems="center" gap={1}>
-                  <Box sx={{ width: 32, height: 32, borderRadius: 1.5, bgcolor: '#fffbeb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Box sx={{ width: 32, height: 32, borderRadius: 1.5, bgcolor: 'rgba(251,146,60,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <DepartureIcon sx={{ fontSize: 18, color: '#d97706' }} />
                   </Box>
-                  <Typography variant="subtitle1" fontWeight={700}>Departures Today</Typography>
+                  <Typography sx={{ color: 'white', fontFamily: 'serif', fontWeight: 600, fontSize: '1rem' }}>Departures Today</Typography>
                 </Box>
                 <Tooltip title="View all reservations">
                   <IconButton size="small" onClick={() => navigate('/reservations')} sx={{ color: 'text.secondary' }}>
@@ -551,9 +570,9 @@ export const DashboardPage: React.FC = () => {
                       display="flex"
                       alignItems="center"
                       gap={1.5}
-                      sx={{ p: 1.5, borderRadius: 2, bgcolor: '#f8fafc', transition: 'all 0.2s', '&:hover': { bgcolor: '#fffbeb' } }}
+                      sx={{ p: 1.5, borderRadius: 2, bgcolor: 'rgba(255,255,255,0.03)', transition: 'all 0.2s', '&:hover': { bgcolor: 'rgba(251,146,60,0.06)' } }}
                     >
-                      <Avatar sx={{ width: 36, height: 36, bgcolor: '#fef3c7', color: '#d97706', fontSize: '0.8rem', fontWeight: 700 }}>
+                      <Avatar sx={{ width: 36, height: 36, bgcolor: 'rgba(251,146,60,0.15)', color: '#fb923c', fontSize: '0.8rem', fontWeight: 700 }}>
                         {dep.guestName.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
                       </Avatar>
                       <Box flexGrow={1} minWidth={0}>
@@ -572,19 +591,61 @@ export const DashboardPage: React.FC = () => {
               )}
             </CardContent>
           </Card>
-        </Grid>
+        </Grid>}
 
-        {/* Recent Reservation Updates (live) */}
-        {recentReservations.length > 0 && (
-          <Grid item xs={12} md={6}>
-            <Card sx={{ borderRadius: 3, border: '1px solid', borderColor: 'grey.100', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        {/* Housekeeping Tasks Panel — shown to housekeeping role */}
+        {role === 'housekeeping' && housekeepingTasks.length > 0 && (
+          <Grid item xs={12}>
+            <Card sx={{ bgcolor: cardBg, border: `1px solid ${cardBorder}`, borderRadius: 0 }}>
               <CardContent sx={{ p: 3 }}>
                 <Box display="flex" alignItems="center" justifyContent="space-between" mb={2.5}>
                   <Box display="flex" alignItems="center" gap={1}>
-                    <Box sx={{ width: 32, height: 32, borderRadius: 1.5, bgcolor: '#f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Box sx={{ width: 32, height: 32, borderRadius: 1.5, bgcolor: 'rgba(212,167,80,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <CleaningIcon sx={{ fontSize: 18, color: '#d97706' }} />
+                    </Box>
+                    <Typography sx={{ color: 'white', fontFamily: 'serif', fontWeight: 600, fontSize: '1rem' }}>My Pending Tasks</Typography>
+                  </Box>
+                  <IconButton size="small" onClick={() => navigate('/housekeeping')} sx={{ color: 'text.secondary' }}>
+                    <OpenInNewIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+                <Box display="flex" flexDirection="column" gap={1.5}>
+                  {housekeepingTasks.slice(0, 8).map((task: any) => (
+                    <Box key={task._id} display="flex" alignItems="center" gap={2}
+                      sx={{ p: 1.5, borderRadius: 2, bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                      <Box sx={{ flexGrow: 1 }}>
+                        <Typography variant="body2" fontWeight={600} sx={{ color: 'white' }}>
+                          Room {task.roomId?.roomNumber || '—'} · {task.taskType?.replace(/_/g, ' ')}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {task.description || 'No description'} · Priority: {task.priority}
+                        </Typography>
+                      </Box>
+                      <Chip
+                        label={task.status?.replace('_', ' ')}
+                        size="small"
+                        color={task.status === 'in_progress' ? 'primary' : 'default'}
+                        sx={{ fontSize: '0.7rem', height: 22, textTransform: 'capitalize' }}
+                      />
+                    </Box>
+                  ))}
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
+
+        {/* Recent Reservation Updates (live) — admin, manager, front_desk */}
+        {canSeeReservations && recentReservations.length > 0 && (
+          <Grid item xs={12} md={6}>
+            <Card sx={{ bgcolor: cardBg, border: "1px solid ${cardBorder}", borderRadius: 0 }}>
+              <CardContent sx={{ p: 3 }}>
+                <Box display="flex" alignItems="center" justifyContent="space-between" mb={2.5}>
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <Box sx={{ width: 32, height: 32, borderRadius: 1.5, bgcolor: 'rgba(201,169,110,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <BookingIcon sx={{ fontSize: 18, color: '#7c3aed' }} />
                     </Box>
-                    <Typography variant="subtitle1" fontWeight={700}>Live Booking Updates</Typography>
+                    <Typography sx={{ color: 'white', fontFamily: 'serif', fontWeight: 600, fontSize: '1rem' }}>Live Booking Updates</Typography>
                   </Box>
                   <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#10b981', animation: 'pulse 2s infinite' }} />
                 </Box>
@@ -595,9 +656,9 @@ export const DashboardPage: React.FC = () => {
                       display="flex"
                       alignItems="center"
                       gap={1.5}
-                      sx={{ p: 1.5, borderRadius: 2, bgcolor: getStatusBg(res.status), border: '1px solid', borderColor: 'grey.100' }}
+                      sx={{ p: 1.5, borderRadius: 2, bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
                     >
-                      <Avatar sx={{ width: 32, height: 32, bgcolor: '#ede9fe', color: '#7c3aed', fontSize: '0.75rem', fontWeight: 700 }}>
+                      <Avatar sx={{ width: 32, height: 32, bgcolor: 'rgba(201,169,110,0.1)', color: gold, fontSize: '0.75rem', fontWeight: 700 }}>
                         {res.guestName?.split(' ').map((n: string) => n[0]).join('').slice(0, 2) || '?'}
                       </Avatar>
                       <Box flexGrow={1} minWidth={0}>
@@ -621,14 +682,14 @@ export const DashboardPage: React.FC = () => {
         {/* Recent Room Status Updates (live) */}
         {recentRoomUpdates.length > 0 && (
           <Grid item xs={12} md={6}>
-            <Card sx={{ borderRadius: 3, border: '1px solid', borderColor: 'grey.100', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+            <Card sx={{ bgcolor: cardBg, border: "1px solid ${cardBorder}", borderRadius: 0 }}>
               <CardContent sx={{ p: 3 }}>
                 <Box display="flex" alignItems="center" justifyContent="space-between" mb={2.5}>
                   <Box display="flex" alignItems="center" gap={1}>
-                    <Box sx={{ width: 32, height: 32, borderRadius: 1.5, bgcolor: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Box sx={{ width: 32, height: 32, borderRadius: 1.5, bgcolor: 'rgba(201,169,110,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <HotelIcon sx={{ fontSize: 18, color: '#2563eb' }} />
                     </Box>
-                    <Typography variant="subtitle1" fontWeight={700}>Room Status Updates</Typography>
+                    <Typography sx={{ color: 'white', fontFamily: 'serif', fontWeight: 600, fontSize: '1rem' }}>Room Status Updates</Typography>
                   </Box>
                   <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#10b981', animation: 'pulse 2s infinite' }} />
                 </Box>
@@ -644,7 +705,7 @@ export const DashboardPage: React.FC = () => {
                     return (
                       <Box
                         key={`${update.roomId}-${i}`}
-                        sx={{ px: 2, py: 1.5, borderRadius: 2, bgcolor: sc.bg, border: '1px solid', borderColor: 'grey.100', minWidth: 120 }}
+                        sx={{ px: 2, py: 1.5, borderRadius: 2, bgcolor: sc.bg, border: '1px solid rgba(255,255,255,0.07)', minWidth: 120 }}
                       >
                         <Box display="flex" alignItems="center" gap={0.75} mb={0.25}>
                           <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: sc.dot }} />
@@ -667,9 +728,9 @@ export const DashboardPage: React.FC = () => {
         {/* Recent Alerts */}
         {recentAlerts.length > 0 && (
           <Grid item xs={12}>
-            <Card sx={{ borderRadius: 3, border: '1px solid', borderColor: 'grey.100', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+            <Card sx={{ bgcolor: cardBg, border: "1px solid ${cardBorder}", borderRadius: 0 }}>
               <CardContent sx={{ p: 3 }}>
-                <Typography variant="subtitle1" fontWeight={700} mb={2}>
+                <Typography sx={{ color: 'white', fontFamily: 'serif', fontWeight: 600, fontSize: '1rem' }} mb={2}>
                   System Alerts
                 </Typography>
                 <Box display="flex" flexDirection="column" gap={1.5}>
@@ -677,7 +738,7 @@ export const DashboardPage: React.FC = () => {
                     <Alert
                       key={alert.id}
                       severity={alert.type as any}
-                      sx={{ borderRadius: 2, '& .MuiAlert-message': { width: '100%' } }}
+                      sx={{ borderRadius: 0, bgcolor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', '& .MuiAlert-message': { width: '100%' } }}
                     >
                       <Box display="flex" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap={1}>
                         <Box>

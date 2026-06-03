@@ -1,25 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  Box,
-  AppBar,
-  Toolbar,
-  Typography,
-  Drawer,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  IconButton,
-  Divider,
-  Avatar,
-  Menu,
-  MenuItem,
-  Tooltip,
-  Badge,
-  useTheme,
-  useMediaQuery,
-  Chip,
+  Box, AppBar, Toolbar, Typography, Drawer, List, ListItem,
+  ListItemButton, ListItemIcon, ListItemText, IconButton,
+  Divider, Avatar, Menu, MenuItem, Tooltip, Badge,
+  useTheme, useMediaQuery,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -35,6 +19,8 @@ import {
   Notifications as NotificationsIcon,
   ChevronLeft as ChevronLeftIcon,
   Settings as SettingsIcon,
+  BookOnline as BookOnlineIcon,
+  Restaurant as RestaurantIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -50,14 +36,16 @@ const DRAWER_WIDTH = 260;
 const DRAWER_COLLAPSED_WIDTH = 72;
 
 const menuItems = [
-  { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard', color: '#2563eb' },
-  { text: 'Rooms', icon: <HotelIcon />, path: '/rooms', color: '#0891b2' },
-  { text: 'Reservations', icon: <EventNoteIcon />, path: '/reservations', color: '#7c3aed' },
-  { text: 'Guests', icon: <PeopleIcon />, path: '/guests', color: '#059669' },
-  { text: 'Housekeeping', icon: <CleaningServicesIcon />, path: '/housekeeping', color: '#d97706' },
-  { text: 'Staff', icon: <GroupIcon />, path: '/staff', color: '#dc2626' },
-  { text: 'Billing', icon: <ReceiptIcon />, path: '/billing', color: '#0d9488' },
-  { text: 'Reports', icon: <AssessmentIcon />, path: '/reports', color: '#7c3aed' },
+  { text: 'Dashboard',        icon: <DashboardIcon />,        path: '/dashboard',         color: '#2563eb', roles: ['admin','manager','front_desk','housekeeping'] },
+  { text: 'Rooms',            icon: <HotelIcon />,            path: '/rooms',             color: '#0891b2', roles: ['admin','manager','front_desk','housekeeping'] },
+  { text: 'Reservations',     icon: <EventNoteIcon />,        path: '/reservations',      color: '#7c3aed', roles: ['admin','manager','front_desk'] },
+  { text: 'Guests',           icon: <PeopleIcon />,           path: '/guests',            color: '#059669', roles: ['admin','manager','front_desk'] },
+  { text: 'Housekeeping',     icon: <CleaningServicesIcon />, path: '/housekeeping',      color: '#d97706', roles: ['admin','manager','front_desk','housekeeping'] },
+  { text: 'Staff',            icon: <GroupIcon />,            path: '/staff',             color: '#dc2626', roles: ['admin','manager'] },
+  { text: 'Billing',          icon: <ReceiptIcon />,          path: '/billing',           color: '#0d9488', roles: ['admin','manager','front_desk'] },
+  { text: 'Reports',          icon: <AssessmentIcon />,       path: '/reports',           color: '#7c3aed', roles: ['admin','manager'] },
+  { text: 'Booking Requests', icon: <BookOnlineIcon />,       path: '/booking-requests',  color: '#ea580c', roles: ['admin','manager','front_desk'], dividerBefore: true },
+  { text: 'Food Orders',      icon: <RestaurantIcon />,       path: '/food-orders',       color: '#16a34a', roles: ['admin','manager','front_desk'] },
 ];
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
@@ -70,7 +58,44 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.auth.user);
-  const { isConnected } = useSocket();
+  const { isConnected, socket } = useSocket() as any;
+
+  // New request badge counts
+  const [newBookings, setNewBookings] = useState(0);
+  const [newFoodOrders, setNewFoodOrders] = useState(0);
+
+  // Fetch initial counts of 'new' requests
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const headers = { Authorization: `Bearer ${token}` };
+    Promise.all([
+      fetch('http://localhost:3001/api/public/booking-requests?status=new&limit=1', { headers }),
+      fetch('http://localhost:3001/api/public/food-orders?status=new&limit=1', { headers }),
+    ]).then(async ([bRes, fRes]) => {
+      if (bRes.ok) { const d = await bRes.json(); setNewBookings(d.pagination?.total || 0); }
+      if (fRes.ok) { const d = await fRes.json(); setNewFoodOrders(d.pagination?.total || 0); }
+    }).catch(() => {});
+  }, []);
+
+  // Real-time badge updates
+  useEffect(() => {
+    if (!socket) return;
+    const onBooking = () => setNewBookings((n) => n + 1);
+    const onFood = () => setNewFoodOrders((n) => n + 1);
+    socket.on('booking_request:new', onBooking);
+    socket.on('food_order:new', onFood);
+    return () => {
+      socket.off('booking_request:new', onBooking);
+      socket.off('food_order:new', onFood);
+    };
+  }, [socket]);
+
+  // Clear badge when visiting the page
+  useEffect(() => {
+    if (location.pathname.startsWith('/booking-requests')) setNewBookings(0);
+    if (location.pathname.startsWith('/food-orders')) setNewFoodOrders(0);
+  }, [location.pathname]);
 
   const drawerWidth = collapsed && !isMobile ? DRAWER_COLLAPSED_WIDTH : DRAWER_WIDTH;
 
@@ -133,11 +158,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               <HotelIcon sx={{ fontSize: 20, color: 'white' }} />
             </Box>
             <Box>
-              <Typography variant="subtitle1" fontWeight={700} lineHeight={1.2}>
-                Grand Hotel
+              <Typography variant="subtitle1" fontWeight={700} lineHeight={1.2} sx={{ letterSpacing: 1 }}>
+                Grand Dima
               </Typography>
-              <Typography variant="caption" sx={{ opacity: 0.5, fontSize: '0.7rem' }}>
-                Management System
+              <Typography variant="caption" sx={{ opacity: 0.5, fontSize: '0.65rem', letterSpacing: 2 }}>
+                HOTEL · SHEGGER
               </Typography>
             </Box>
           </Box>
@@ -180,68 +205,69 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Navigation */}
       <Box sx={{ flexGrow: 1, overflowY: 'auto', overflowX: 'hidden', py: 1.5, px: collapsed ? 1 : 1.5 }}>
         <List disablePadding>
-          {menuItems.map((item) => {
+          {menuItems.filter(item => !user?.role || item.roles.includes(user.role)).map((item) => {
             const isActive = location.pathname.startsWith(item.path);
+            const badge = item.path === '/booking-requests' ? newBookings : item.path === '/food-orders' ? newFoodOrders : 0;
             return (
-              <Tooltip
-                key={item.text}
-                title={collapsed ? item.text : ''}
-                placement="right"
-                arrow
-              >
-                <ListItem disablePadding sx={{ mb: 0.5 }}>
-                  <ListItemButton
-                    onClick={() => handleMenuClick(item.path)}
-                    sx={{
-                      borderRadius: 2,
-                      px: collapsed ? 1.5 : 2,
-                      py: 1.2,
-                      justifyContent: collapsed ? 'center' : 'flex-start',
-                      minHeight: 48,
-                      position: 'relative',
-                      bgcolor: isActive ? 'rgba(37, 99, 235, 0.2)' : 'transparent',
-                      border: isActive ? '1px solid rgba(37, 99, 235, 0.3)' : '1px solid transparent',
-                      transition: 'all 0.2s ease',
-                      '&:hover': {
-                        bgcolor: isActive ? 'rgba(37, 99, 235, 0.25)' : 'rgba(255,255,255,0.06)',
-                        transform: 'translateX(2px)',
-                      },
-                    }}
-                  >
-                    <ListItemIcon
+              <React.Fragment key={item.text}>
+                {(item as any).dividerBefore && (
+                  <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)', my: 1, mx: collapsed ? 1 : 1.5 }} />
+                )}
+                <Tooltip title={collapsed ? item.text : ''} placement="right" arrow>
+                  <ListItem disablePadding sx={{ mb: 0.5 }}>
+                    <ListItemButton
+                      onClick={() => handleMenuClick(item.path)}
                       sx={{
-                        minWidth: collapsed ? 0 : 40,
-                        color: isActive ? item.color : 'rgba(255,255,255,0.45)',
-                        transition: 'color 0.2s',
-                        '& .MuiSvgIcon-root': { fontSize: 22 },
+                        borderRadius: 2,
+                        px: collapsed ? 1.5 : 2,
+                        py: 1.2,
+                        justifyContent: collapsed ? 'center' : 'flex-start',
+                        minHeight: 48,
+                        position: 'relative',
+                        bgcolor: isActive ? 'rgba(37, 99, 235, 0.2)' : 'transparent',
+                        border: isActive ? '1px solid rgba(37, 99, 235, 0.3)' : '1px solid transparent',
+                        transition: 'all 0.2s ease',
+                        '&:hover': {
+                          bgcolor: isActive ? 'rgba(37, 99, 235, 0.25)' : 'rgba(255,255,255,0.06)',
+                          transform: 'translateX(2px)',
+                        },
                       }}
                     >
-                      {item.icon}
-                    </ListItemIcon>
-                    {!collapsed && (
-                      <ListItemText
-                        primary={item.text}
-                        primaryTypographyProps={{
-                          fontSize: '0.875rem',
-                          fontWeight: isActive ? 600 : 400,
-                          color: isActive ? 'white' : 'rgba(255,255,255,0.65)',
-                        }}
-                      />
-                    )}
-                    {isActive && !collapsed && (
-                      <Box
+                      <ListItemIcon
                         sx={{
-                          width: 6,
-                          height: 6,
-                          borderRadius: '50%',
-                          bgcolor: item.color,
-                          flexShrink: 0,
+                          minWidth: collapsed ? 0 : 40,
+                          color: isActive ? item.color : 'rgba(255,255,255,0.45)',
+                          transition: 'color 0.2s',
+                          '& .MuiSvgIcon-root': { fontSize: 22 },
                         }}
-                      />
-                    )}
-                  </ListItemButton>
-                </ListItem>
-              </Tooltip>
+                      >
+                        <Badge badgeContent={badge > 0 ? badge : undefined} color="error"
+                          sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', height: 16, minWidth: 16, top: -2, right: -2 } }}>
+                          {item.icon}
+                        </Badge>
+                      </ListItemIcon>
+                      {!collapsed && (
+                        <ListItemText
+                          primary={item.text}
+                          primaryTypographyProps={{
+                            fontSize: '0.875rem',
+                            fontWeight: isActive ? 600 : 400,
+                            color: isActive ? 'white' : 'rgba(255,255,255,0.65)',
+                          }}
+                        />
+                      )}
+                      {!collapsed && badge > 0 && (
+                        <Box sx={{ width: 20, height: 20, borderRadius: '50%', bgcolor: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <Typography sx={{ color: 'white', fontSize: '0.6rem', fontWeight: 700 }}>{badge > 99 ? '99+' : badge}</Typography>
+                        </Box>
+                      )}
+                      {isActive && !collapsed && badge === 0 && (
+                        <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: item.color, flexShrink: 0 }} />
+                      )}
+                    </ListItemButton>
+                  </ListItem>
+                </Tooltip>
+              </React.Fragment>
             );
           })}
         </List>
@@ -299,7 +325,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   );
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#f1f5f9' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#0a0a0a' }}>
       {/* Sidebar */}
       <Box
         component="nav"
@@ -357,9 +383,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           position="sticky"
           elevation={0}
           sx={{
-            bgcolor: 'white',
-            borderBottom: '1px solid #e2e8f0',
-            color: 'text.primary',
+            bgcolor: '#111',
+            borderBottom: '1px solid rgba(255,255,255,0.07)',
+            color: 'white',
             zIndex: theme.zIndex.drawer - 1,
           }}
         >
@@ -368,49 +394,47 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             <IconButton
               edge="start"
               onClick={handleDrawerToggle}
-              sx={{ display: { md: 'none' }, color: 'text.secondary' }}
+              sx={{ display: { md: 'none' }, color: 'rgba(255,255,255,0.6)' }}
             >
               <MenuIcon />
             </IconButton>
 
             {/* Page title */}
             <Box sx={{ flexGrow: 1 }}>
-              <Typography variant="h6" fontWeight={700} color="text.primary" lineHeight={1.2}>
-                {currentPage?.text || 'Dashboard'}
+              <Typography sx={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.58rem', letterSpacing: 3, fontFamily: 'sans-serif', lineHeight: 1, mb: 0.25 }}>
+                GRAND DIMA HOTEL
               </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              <Typography sx={{ color: 'white', fontFamily: '"Playfair Display", Georgia, serif', fontWeight: 600, fontSize: '1.1rem', lineHeight: 1 }}>
+                {currentPage?.text || 'Dashboard'}
               </Typography>
             </Box>
 
             {/* Connection status */}
-            <Chip
-              size="small"
-              label={isConnected ? 'Live' : 'Offline'}
-              sx={{
-                bgcolor: isConnected ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                color: isConnected ? '#059669' : '#dc2626',
-                fontWeight: 600,
-                fontSize: '0.75rem',
-                height: 26,
-                '& .MuiChip-label': { px: 1.5 },
-                display: { xs: 'none', sm: 'flex' },
-              }}
-            />
+            <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 1, px: 2, py: 0.75, bgcolor: isConnected ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${isConnected ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}` }}>
+              <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: isConnected ? '#10b981' : '#ef4444' }} />
+              <Typography sx={{ color: isConnected ? '#10b981' : '#ef4444', fontSize: '0.62rem', letterSpacing: 2, fontFamily: 'sans-serif' }}>
+                {isConnected ? 'LIVE' : 'OFFLINE'}
+              </Typography>
+            </Box>
 
             {/* Notifications */}
-            <Tooltip title="Notifications">
+            <Tooltip title="New Requests">
               <IconButton
+                onClick={() => navigate('/booking-requests')}
                 sx={{
-                  color: 'text.secondary',
-                  bgcolor: '#f8fafc',
-                  border: '1px solid #e2e8f0',
-                  width: 40,
-                  height: 40,
-                  '&:hover': { bgcolor: '#f1f5f9', color: 'primary.main' },
+                  color: 'rgba(255,255,255,0.5)',
+                  bgcolor: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  width: 40, height: 40,
+                  borderRadius: 0,
+                  '&:hover': { bgcolor: 'rgba(201,169,110,0.1)', color: '#c9a96e', borderColor: 'rgba(201,169,110,0.3)' },
                 }}
               >
-                <Badge badgeContent={3} color="error" sx={{ '& .MuiBadge-badge': { fontSize: '0.65rem', height: 16, minWidth: 16 } }}>
+                <Badge
+                  badgeContent={newBookings + newFoodOrders || undefined}
+                  color="error"
+                  sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', height: 15, minWidth: 15 } }}
+                >
                   <NotificationsIcon fontSize="small" />
                 </Badge>
               </IconButton>
@@ -418,18 +442,13 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
             {/* User avatar */}
             <Tooltip title="Account settings">
-              <IconButton
-                onClick={handleProfileMenuOpen}
-                sx={{ p: 0.5 }}
-              >
+              <IconButton onClick={handleProfileMenuOpen} sx={{ p: 0.5 }}>
                 <Avatar
                   sx={{
-                    width: 38,
-                    height: 38,
-                    background: 'linear-gradient(135deg, #2563eb, #8b5cf6)',
-                    fontSize: '0.875rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
+                    width: 36, height: 36,
+                    background: 'linear-gradient(135deg, #c9a96e, #b8935a)',
+                    fontSize: '0.85rem', fontWeight: 700,
+                    cursor: 'pointer', borderRadius: 0,
                   }}
                 >
                   {user?.firstName?.[0]?.toUpperCase() || 'U'}
@@ -447,51 +466,41 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           transformOrigin={{ horizontal: 'right', vertical: 'top' }}
           anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
           PaperProps={{
-            elevation: 8,
+            elevation: 0,
             sx: {
               mt: 1,
               minWidth: 220,
-              borderRadius: 2,
-              border: '1px solid #e2e8f0',
-              overflow: 'visible',
-              '&::before': {
-                content: '""',
-                display: 'block',
-                position: 'absolute',
-                top: 0,
-                right: 16,
-                width: 10,
-                height: 10,
-                bgcolor: 'background.paper',
-                transform: 'translateY(-50%) rotate(45deg)',
-                borderTop: '1px solid #e2e8f0',
-                borderLeft: '1px solid #e2e8f0',
-              },
+              borderRadius: 0,
+              bgcolor: '#111',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: 'white',
             },
           }}
         >
-          <Box sx={{ px: 2, py: 1.5 }}>
-            <Typography variant="subtitle2" fontWeight={600}>
+          <Box sx={{ px: 2.5, py: 2, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+            <Typography sx={{ color: 'white', fontFamily: 'serif', fontWeight: 600, fontSize: '0.95rem' }}>
               {user?.firstName} {user?.lastName}
             </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'capitalize' }}>
-              {user?.role?.replace('_', ' ') || 'Staff'} · {user?.email}
+            <Typography sx={{ color: '#c9a96e', fontSize: '0.65rem', letterSpacing: 2, fontFamily: 'sans-serif', textTransform: 'uppercase', mt: 0.25 }}>
+              {user?.role?.replace('_', ' ') || 'Staff'}
+            </Typography>
+            <Typography sx={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem', fontFamily: 'sans-serif', mt: 0.25 }}>
+              {user?.email}
             </Typography>
           </Box>
-          <Divider />
           <MenuItem
             onClick={handleProfileMenuClose}
-            sx={{ gap: 1.5, py: 1.2, '&:hover': { bgcolor: 'rgba(37,99,235,0.06)', color: 'primary.main' } }}
+            sx={{ gap: 1.5, py: 1.5, color: 'rgba(255,255,255,0.6)', '&:hover': { bgcolor: 'rgba(201,169,110,0.08)', color: '#c9a96e' } }}
           >
             <SettingsIcon fontSize="small" />
-            <Typography variant="body2">Settings</Typography>
+            <Typography variant="body2" fontFamily="sans-serif">Settings</Typography>
           </MenuItem>
           <MenuItem
             onClick={handleLogout}
-            sx={{ gap: 1.5, py: 1.2, color: 'error.main', '&:hover': { bgcolor: 'rgba(239,68,68,0.06)' } }}
+            sx={{ gap: 1.5, py: 1.5, color: '#f87171', '&:hover': { bgcolor: 'rgba(239,68,68,0.08)' } }}
           >
             <LogoutIcon fontSize="small" />
-            <Typography variant="body2">Sign out</Typography>
+            <Typography variant="body2" fontFamily="sans-serif">Sign out</Typography>
           </MenuItem>
         </Menu>
 
@@ -500,8 +509,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           component="main"
           sx={{
             flexGrow: 1,
-            p: { xs: 2, sm: 3 },
+            p: { xs: 2, sm: 3, md: 3 },
             overflowX: 'hidden',
+            bgcolor: '#0a0a0a',
+            minHeight: 'calc(100vh - 72px)',
           }}
         >
           {children}
