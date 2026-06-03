@@ -180,7 +180,7 @@ export const LoginPage: React.FC = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={loading}
-              placeholder="admin@granddima.com"
+              placeholder="Enter your email"
               sx={inputSx}
             />
           </Box>
@@ -255,25 +255,6 @@ export const LoginPage: React.FC = () => {
           </Box>
         </Box>
 
-        {/* Demo credentials */}
-        <Box
-          sx={{
-            position: 'absolute',
-            bottom: 32,
-            left: 0,
-            right: 0,
-            px: { xs: 4, sm: 6 },
-          }}
-        >
-          <Box sx={{ p: 2, bgcolor: 'rgba(201,169,110,0.06)', border: '1px solid rgba(201,169,110,0.15)' }}>
-            <Typography sx={{ color: gold, fontSize: '0.58rem', letterSpacing: 2.5, fontFamily: 'sans-serif', mb: 1 }}>
-              DEMO CREDENTIALS
-            </Typography>
-            <Typography sx={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.78rem', fontFamily: 'sans-serif' }}>
-              admin@hotel.com · Admin@123456
-            </Typography>
-          </Box>
-        </Box>
       </Box>
     </Box>
   );
